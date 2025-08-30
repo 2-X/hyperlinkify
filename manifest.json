@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Hyperlinkify",
+  "version": "2.2",
+  "description": "Chrome extension to copy hyperlinks from any page, as rich or markdown",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*",
+        "file://*/*"
+      ],
+      "js": [
+        "src/content_scripts/templates.js",
+        "src/content_scripts/content.js",
+        "src/content_scripts/copyCommands.js"      
+      ]
+    }
+  ],
+  "icons": {
+      "427": "images/icon.png"
+  },
+  "action": {
+    "default_title": "Hyperlinkify",
+    "default_popup": "src/display_scripts/popup.html"
+  }
+}
