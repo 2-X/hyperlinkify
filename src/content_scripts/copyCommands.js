@@ -5,6 +5,61 @@ let doublePressPendingTimeout = null;
 // Detect if we're on macOS
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
+let siteDisabled = false;
+
+let globalShortcut = null;
+let globalShortcutEnabled = true;
+
+function getDefaultShortcut() {
+	return { code: 'KeyC', ctrl: !isMac, alt: false, shift: false, meta: isMac };
+}
+
+function loadShortcutConfig() {
+	chrome.storage.sync.get(['globalShortcut', 'globalShortcutEnabled'], (res) => {
+		globalShortcut = res.globalShortcut || getDefaultShortcut();
+		globalShortcutEnabled = typeof res.globalShortcutEnabled === 'boolean' ? res.globalShortcutEnabled : true;
+	});
+}
+
+function isShortcutMatch(event, s) {
+	if (!s) return false;
+	if (event.code !== s.code) return false;
+	if (!!event.ctrlKey !== !!s.ctrl) return false;
+	if (!!event.altKey !== !!s.alt) return false;
+	if (!!event.shiftKey !== !!s.shift) return false;
+	if (!!event.metaKey !== !!s.meta) return false;
+	return true;
+}
+
+function getHostnameForSite() {
+	try {
+		if (location.protocol === 'file:') return 'file';
+		return location.hostname;
+	} catch (e) {
+		return '';
+	}
+}
+
+function refreshSiteDisabled() {
+	chrome.storage.sync.get(['disabledDomains'], (res) => {
+		const list = Array.isArray(res.disabledDomains) ? res.disabledDomains : [];
+		siteDisabled = list.includes(getHostnameForSite());
+	});
+}
+
+refreshSiteDisabled();
+
+loadShortcutConfig();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+	if (area === 'sync' && changes.disabledDomains) {
+		refreshSiteDisabled();
+	}
+	if (area === 'sync' && (changes.globalShortcut || changes.globalShortcutEnabled)) {
+		loadShortcutConfig();
+	}
+});
+
 function hasUserSelection() {
     // Consider "real" selection only when there is visible highlighted text
     // i.e., selected text length >= 1. Caret-only focus should NOT count.
@@ -31,8 +86,14 @@ document.addEventListener('keydown', function(event) {
     // macOS: CMD+ALT+C (metaKey + altKey + KeyC)
     // Windows/Linux: CTRL+ALT+C (ctrlKey + altKey + KeyC)
     console.log(event)
-    if (event.code === 'KeyC' && //event.altKey && 
-        ((isMac && event.metaKey) || (!isMac && event.ctrlKey))) {
+    const shortcut = globalShortcut || getDefaultShortcut();
+    if (!globalShortcutEnabled) {
+    	return;
+    }
+    if (isShortcutMatch(event, shortcut)) {
+		if (siteDisabled) {
+			return;
+		}
         // If user has a selection, allow normal copy behavior
         if (hasUserSelection()) {
             return; // Do not prevent default or trigger hyperlinkify

@@ -91,6 +91,7 @@ div#hyperlinkify-story {
     padding: 10px;
     font-size: 20px;
     font-weight: bold;
+    text-align: center;
 }
 
 div#hyperlinkify-story:hover {

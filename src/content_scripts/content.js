@@ -105,7 +105,7 @@ function showNotification(isMarkdown, copiedText) {
     const message = document.createElement('div');
     // Remove brackets from the formatted text for display
     const displayText = copiedText ? copiedText.replace(/^\[|\]$/g, '') : 'content';
-    message.textContent = `Copied "${displayText}" as ${!isMarkdown ? 'a hyperlink' : 'a markdown hyperlink'} to this page`;
+    message.textContent = displayText;
     message.style.padding = '20px 40px';
     message.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
     message.style.borderRadius = '8px';
@@ -134,6 +134,13 @@ chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         if( request.message === "hyperlinkify_story" ) {
             console.log(`hyperlinkify_story markdown: ${request.markdown}`);
+            try {
+                const domain = (location.protocol === 'file:') ? 'file' : location.hostname;
+                chrome.storage.sync.get(['disabledDomains'], (res) => {
+                    const list = Array.isArray(res.disabledDomains) ? res.disabledDomains : [];
+                    if (list.includes(domain)) {
+                        return;
+                    }
 
             var story_contents = get_story_contents_from_templates();
 
@@ -183,6 +190,10 @@ chrome.runtime.onMessage.addListener(
                 sendResponse({success: true});
             }
 
+                });
+            } catch (e) {
+                // swallow
+            }
         }
     }
 );
