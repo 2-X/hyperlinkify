@@ -94,6 +94,38 @@
                     story_link: url
                 };
             }
+        },
+        {
+            id: 'aws_s3_bucket',
+            match: function(url) {
+                return url.includes('.console.aws.amazon.com/s3/buckets');
+            },
+            scopeSelectors: ['document'],
+            extract: function(scope, url) {
+                var breadcrumbNav = document.querySelector('nav[data-testid="mosaic-breadcrumbs"]');
+                if (!breadcrumbNav) {
+                    return null;
+                }
+                var breadcrumbItems = breadcrumbNav.querySelectorAll('ol.awsui_breadcrumb-group-list_d19fg_yqdse_180:not(.awsui_ghost_d19fg_yqdse_191) > li.awsui_item_d19fg_yqdse_196');
+                if (!breadcrumbItems || breadcrumbItems.length < 3) {
+                    return null;
+                }
+                var pathParts = [];
+                for (var i = 2; i < breadcrumbItems.length; i++) {
+                    var textEl = breadcrumbItems[i].querySelector('.awsui_text_1kosq_6mb5s_206');
+                    if (textEl) {
+                        pathParts.push(textEl.innerText.replace(/\/+$/, ''));
+                    }
+                }
+                if (pathParts.length === 0) {
+                    return null;
+                }
+                var fullPath = pathParts.join('/') + '/';
+                return {
+                    formatted_text: `[Amazon S3 Bucket • ${fullPath}]`,
+                    story_link: url
+                };
+            }
         }
     ];
 })();

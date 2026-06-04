@@ -1,33 +1,28 @@
-function copyToClipboard(value) {
-    var temp_elem;
-    
-    if (typeof value === 'string') {
-        // Handle string input
-        temp_elem = document.createElement('textarea');
-        temp_elem.value = value;
-        document.body.appendChild(temp_elem);
-        temp_elem.select();
-    } else if (value instanceof Element) {
-        temp_elem = value.cloneNode(true);
-        document.body.appendChild(temp_elem);
-        
-        // Create a range and selection
-        const range = document.createRange();
-        const selection = window.getSelection();
-        
-        selection.removeAllRanges();
-        range.selectNodeContents(temp_elem);
-        selection.addRange(range);
-    } else {
-        console.error('Invalid input type. Expected string or DOM element.');
-        return;
-    }
-    
-    document.execCommand("copy");
-    document.body.removeChild(temp_elem);
-    
-    if (value instanceof Element) {
-        window.getSelection().removeAllRanges();
+async function copyToClipboard(value) {
+    try {
+        if (typeof value === 'string') {
+            await navigator.clipboard.writeText(value);
+        } else if (value instanceof Element) {
+            const htmlContent = value.outerHTML;
+            const textContent = value.textContent || '';
+            
+            const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+            const textBlob = new Blob([textContent], { type: 'text/plain' });
+            
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': htmlBlob,
+                    'text/plain': textBlob
+                })
+            ]);
+        } else {
+            console.error('Invalid input type. Expected string or DOM element.');
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Clipboard write failed:', err);
+        return false;
     }
 }
 
@@ -139,61 +134,69 @@ chrome.runtime.onMessage.addListener(
                 chrome.storage.sync.get(['disabledDomains'], (res) => {
                     const list = Array.isArray(res.disabledDomains) ? res.disabledDomains : [];
                     if (list.includes(domain)) {
+                        sendResponse({success: false});
                         return;
                     }
 
-            var story_contents = get_story_contents_from_templates();
+                    var story_contents = get_story_contents_from_templates();
 
-            if(story_contents === null || story_contents === undefined){
-                console.log("No story contents found");
-                return;
-            }
+                    if(story_contents === null || story_contents === undefined){
+                        console.log("No story contents found");
+                        sendResponse({success: false});
+                        return;
+                    }
 
-            if(story_contents.formatted_text === null || story_contents.formatted_text === undefined){
-                console.log("Error getting story contents");
-                return;
-            }
+                    if(story_contents.formatted_text === null || story_contents.formatted_text === undefined){
+                        console.log("Error getting story contents");
+                        sendResponse({success: false});
+                        return;
+                    }
 
-            formatted_text = story_contents.formatted_text;
-            story_link = story_contents.story_link;
+                    var formatted_text = story_contents.formatted_text;
+                    var story_link = story_contents.story_link;
 
-            if(request.markdown) {
-                var markdown_text = toMarkdownLinkText(formatted_text) + `(${story_link})`
-                copyToClipboard(markdown_text)
-                
-                console.log("Markdown text copied to clipboard.");
-                showNotification(true, formatted_text);
-                sendResponse({success: true});
-                
-            } else {
-                var tempLink = document.createElement('a');
-                tempLink.href = story_link;
-                tempLink.textContent = formatted_text; 
-                tempLink.style.textDecoration = 'underline';
+                    if(request.markdown) {
+                        var markdown_text = toMarkdownLinkText(formatted_text) + `(${story_link})`
+                        copyToClipboard(markdown_text).then((success) => {
+                            if (success) {
+                                console.log("Markdown text copied to clipboard.");
+                                showNotification(true, formatted_text);
+                            } else {
+                                console.error("Failed to copy markdown to clipboard.");
+                            }
+                            sendResponse({success: success});
+                        });
+                    } else {
+                        var tempLink = document.createElement('a');
+                        tempLink.href = story_link;
+                        tempLink.textContent = formatted_text; 
+                        tempLink.style.textDecoration = 'underline';
 
+                        var container = document.createElement('div');
+                        container.appendChild(tempLink);
+                        container.style.color = 'blue';
+                        container.style.backgroundColor = 'transparent';
+                        
+                        var tempDiv = document.createElement('div');
+                        tempDiv.style.color = 'black';
+                        tempDiv.style.backgroundColor = 'transparent';
+                        tempDiv.appendChild(container)
 
-                var container = document.createElement('div');
-                container.appendChild(tempLink);
-                container.style.color = 'blue';
-                container.style.backgroundColor = 'transparent';
-                
-                var tempDiv = document.createElement('div');
-                tempDiv.style.color = 'black';
-                tempDiv.style.backgroundColor = 'transparent';
-                tempDiv.appendChild(container)
-                document.body.appendChild(tempDiv);
-
-                copyToClipboard(tempDiv)
-                
-                console.log("Formatted hyperlinks copied to clipboard.");
-                showNotification(false, formatted_text);
-                sendResponse({success: true});
-            }
-
+                        copyToClipboard(tempDiv).then((success) => {
+                            if (success) {
+                                console.log("Formatted hyperlinks copied to clipboard.");
+                                showNotification(false, formatted_text);
+                            } else {
+                                console.error("Failed to copy hyperlink to clipboard.");
+                            }
+                            sendResponse({success: success});
+                        });
+                    }
                 });
             } catch (e) {
-                // swallow
+                sendResponse({success: false});
             }
+            return true;
         }
     }
 );

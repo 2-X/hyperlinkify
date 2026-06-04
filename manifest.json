@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Hyperlinkify",
-    "version": "2025.09.29.1",
+    "version": "2026.01.30.1",
     "description": "Chrome extension to copy hyperlinks from any page, as rich or markdown",
     "background": {
         "service_worker": "background.js"
@@ -9,7 +9,8 @@
     "permissions": [
         "storage",
         "tabs",
-        "activeTab"
+        "activeTab",
+        "clipboardWrite"
     ],
     "host_permissions": [
         "*://*/*",

@@ -85,7 +85,6 @@ document.addEventListener('keydown', function(event) {
     // Check for platform-specific keyboard shortcuts
     // macOS: CMD+ALT+C (metaKey + altKey + KeyC)
     // Windows/Linux: CTRL+ALT+C (ctrlKey + altKey + KeyC)
-    console.log(event)
     const shortcut = globalShortcut || getDefaultShortcut();
     if (!globalShortcutEnabled) {
     	return;
