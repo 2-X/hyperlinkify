@@ -1,20 +1,50 @@
 async function copyToClipboard(value) {
     try {
         if (typeof value === 'string') {
-            await navigator.clipboard.writeText(value);
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(value);
+            } else {
+                var textarea = document.createElement('textarea');
+                textarea.value = value;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                var ok = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (!ok) throw new Error('execCommand copy failed');
+            }
         } else if (value instanceof Element) {
-            const htmlContent = value.outerHTML;
-            const textContent = value.textContent || '';
-            
-            const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-            const textBlob = new Blob([textContent], { type: 'text/plain' });
-            
-            await navigator.clipboard.write([
-                new ClipboardItem({
-                    'text/html': htmlBlob,
-                    'text/plain': textBlob
-                })
-            ]);
+            if (navigator.clipboard) {
+                const htmlContent = value.outerHTML;
+                const textContent = value.textContent || '';
+                const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+                const textBlob = new Blob([textContent], { type: 'text/plain' });
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        'text/html': htmlBlob,
+                        'text/plain': textBlob
+                    })
+                ]);
+            } else {
+                var el = document.createElement('div');
+                el.setAttribute('contenteditable', '');
+                el.style.position = 'fixed';
+                el.style.top = '-9999px';
+                el.style.opacity = '0';
+                el.appendChild(value.cloneNode(true));
+                document.body.appendChild(el);
+                var range = document.createRange();
+                range.selectNodeContents(el);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                var ok = document.execCommand('copy');
+                sel.removeAllRanges();
+                document.body.removeChild(el);
+                if (!ok) throw new Error('execCommand copy failed');
+            }
         } else {
             console.error('Invalid input type. Expected string or DOM element.');
             return false;
